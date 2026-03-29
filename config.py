@@ -1,7 +1,17 @@
-ENTRY_SPREAD = 9.0
-CHECK_INTERVAL_SECONDS = 60
+"""
+Configuration values for the WTI-Brent live spread monitor.
 
-WTI_SYMBOL = "CL=F"
-BRENT_SYMBOL = "BZ=F"
+This file contains adjustable project settings such as:
+- market symbols
+- spread alert threshold
+- polling interval
+- feature toggles
+"""
 
-ENABLE_ALERTS = True
+ENTRY_SPREAD = 9.0          #alert me if Brent - WTI reaches 9
+CHECK_INTERVAL_SECONDS = 60 #check every 60 seconds
+
+WTI_SYMBOL = "CL=F"         #Yahoo Finance code for WTI futures
+BRENT_SYMBOL = "BZ=F"       #Yahoo Finance code for Brent futures
+
+ENABLE_ALERTS = True        #allow the app to trigger alerts
