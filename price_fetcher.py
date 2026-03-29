@@ -1,45 +1,82 @@
 """
-Fetches live WTI and Brent prices from Yahoo Finance.
+Fetches live WTI and Brent prices from MetaTrader 5.
 """
 
-import yfinance as yf
+from __future__ import annotations
 
-from config import (
-    PRICE_INTERVAL,
-    PRICE_PERIOD,
-    FALLBACK_PRICE_INTERVAL,
-    FALLBACK_PRICE_PERIOD,
-    LAST_RESORT_PRICE_INTERVAL,
-    LAST_RESORT_PRICE_PERIOD,
-)
+import MetaTrader5 as mt5
 
 
-def fetch_price_history(symbol: str, period: str, interval: str):
-    ticker = yf.Ticker(symbol)
-    return ticker.history(period=period, interval=interval)
+def initialize_mt5(login: int, password: str, server: str) -> None:
+    """
+    Initialize the MT5 terminal connection and log into the broker account.
+    """
+    if not mt5.initialize():
+        error = mt5.last_error()
+        raise RuntimeError(f"MT5 initialize() failed: {error}")
+
+    authorized = mt5.login(
+        login=login,
+        password=password,
+        server=server,
+    )
+
+    if not authorized:
+        error = mt5.last_error()
+        mt5.shutdown()
+        raise RuntimeError(f"MT5 login failed: {error}")
+
+
+def shutdown_mt5() -> None:
+    """
+    Cleanly close the MT5 connection.
+    """
+    mt5.shutdown()
+
+
+def get_symbol_tick(symbol: str):
+    """
+    Return the full tick object for a symbol.
+    """
+    tick = mt5.symbol_info_tick(symbol)
+
+    if tick is None:
+        raise ValueError(f"No tick data returned for symbol: {symbol}")
+
+    return tick
 
 
 def get_latest_price(symbol: str) -> float:
     """
-    Retrieve the latest available price for a symbol using fallback intervals.
+    Retrieve the latest marketable display price for a symbol using the mid price.
+    Mid price = (bid + ask) / 2
     """
-    attempts = [
-        (PRICE_PERIOD, PRICE_INTERVAL),
-        (FALLBACK_PRICE_PERIOD, FALLBACK_PRICE_INTERVAL),
-        (LAST_RESORT_PRICE_PERIOD, LAST_RESORT_PRICE_INTERVAL),
-    ]
+    tick = get_symbol_tick(symbol)
 
-    for period, interval in attempts:
-        history = fetch_price_history(symbol, period, interval)
+    if tick.bid <= 0 or tick.ask <= 0:
+        raise ValueError(f"Invalid bid/ask for symbol: {symbol}")
 
-        if not history.empty:
-            latest_close = history.iloc[-1]["Close"]
-            return float(latest_close)
-
-    raise ValueError(f"No data returned for symbol after all fallbacks: {symbol}")
+    mid_price = (tick.bid + tick.ask) / 2
+    return float(mid_price)
 
 
 def get_wti_brent_prices(wti_symbol: str, brent_symbol: str) -> tuple[float, float]:
+    """
+    Return simple display prices for WTI and Brent.
+    """
     wti_price = get_latest_price(wti_symbol)
     brent_price = get_latest_price(brent_symbol)
     return wti_price, brent_price
+
+
+def get_executable_short_spread(wti_symbol: str, brent_symbol: str) -> float:
+    """
+    Real executable spread for the short-spread setup:
+    Buy WTI at ASK, Sell Brent at BID
+
+    Spread = Brent bid - WTI ask
+    """
+    wti_tick = get_symbol_tick(wti_symbol)
+    brent_tick = get_symbol_tick(brent_symbol)
+
+    return float(brent_tick.bid - wti_tick.ask)
