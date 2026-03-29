@@ -17,7 +17,9 @@ from config import (
 )
 from price_fetcher import (
     close_short_spread_pair,
+    detect_open_spread_state,
     get_executable_short_spread,
+    get_position_type_name,
     get_wti_brent_quotes,
     initialize_mt5,
     open_short_spread_pair,
@@ -36,6 +38,23 @@ def print_order_result(title: str, result) -> None:
     print(f"  comment: {result.comment}")
     print(f"  request_id: {result.request_id}")
     print("-" * 100)
+
+
+def print_position_info(label: str, position) -> None:
+    if position is None:
+        print(f"  {label}: none")
+        return
+
+    print(
+        f"  {label}: "
+        f"ticket={position.ticket}, "
+        f"type={get_position_type_name(position.position_type)}, "
+        f"volume={position.volume}, "
+        f"price_open={position.price_open}, "
+        f"price_current={position.price_current}, "
+        f"profit={position.profit}, "
+        f"time={position.time}"
+    )
 
 
 def main() -> None:
@@ -60,6 +79,8 @@ def main() -> None:
     display_spread = calculate_spread(wti_quote.mid, brent_quote.mid)
     executable_spread = get_executable_short_spread(WTI_SYMBOL, BRENT_SYMBOL)
 
+    spread_state = detect_open_spread_state(WTI_SYMBOL, BRENT_SYMBOL)
+
     print("CURRENT MARKET SNAPSHOT")
     print(
         f"WTI   | bid={wti_quote.bid:.3f} ask={wti_quote.ask:.3f} mid={wti_quote.mid:.3f} "
@@ -70,6 +91,12 @@ def main() -> None:
         f"| tick={brent_quote.tick_time}"
     )
     print(f"SPREAD | display={display_spread:.3f} | executable_short={executable_spread:.3f}")
+    print("-" * 100)
+
+    print("OPEN SPREAD STATE")
+    print(f"  state: {spread_state['state']}")
+    print_position_info("WTI", spread_state["wti_position"])
+    print_position_info("BRENT", spread_state["brent_position"])
     print("-" * 100)
 
     if ENABLE_ALERTS and is_entry_signal(executable_spread, ENTRY_SPREAD):
