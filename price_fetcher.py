@@ -9,22 +9,17 @@ import MetaTrader5 as mt5
 
 def initialize_mt5(login: int, password: str, server: str) -> None:
     """
-    Initialize the MT5 terminal connection and log into the broker account.
+    Initialize the MT5 terminal connection directly with account credentials.
     """
-    if not mt5.initialize():
-        error = mt5.last_error()
-        raise RuntimeError(f"MT5 initialize() failed: {error}")
-
-    authorized = mt5.login(
+    connected = mt5.initialize(
         login=login,
         password=password,
         server=server,
     )
 
-    if not authorized:
+    if not connected:
         error = mt5.last_error()
-        mt5.shutdown()
-        raise RuntimeError(f"MT5 login failed: {error}")
+        raise RuntimeError(f"MT5 initialize() failed: {error}")
 
 
 def shutdown_mt5() -> None:

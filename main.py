@@ -30,7 +30,7 @@ def main() -> None:
     print()
 
     login = int(input("Enter MT5 login: ").strip())
-    password = getpass("Enter MT5 password: ")
+    password = input("Enter MT5 password: ").strip()
     server = input("Enter MT5 server: ").strip()
 
     initialize_mt5(login, password, server)
