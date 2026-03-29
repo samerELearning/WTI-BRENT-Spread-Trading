@@ -1,18 +1,14 @@
 """
-Configuration values for the WTI-Brent live spread monitor.
-
-This file contains adjustable project settings such as:
-- market symbols
-- spread alert threshold
-- polling interval
-- feature toggles
+Configuration values for the WTI-BRENT MT5 spread monitor.
 """
 
-ENTRY_SPREAD = 9.0          # alert when Brent - WTI reaches this level
-CHECK_INTERVAL_SECONDS = 1  # check every 1 second
+ENTRY_SPREAD = 9.0
+CHECK_INTERVAL_SECONDS = 1
 
 WTI_SYMBOL = "WTI"
 BRENT_SYMBOL = "BRENT"
+
+PAIR_LOT_SIZE = 0.05
 
 ENABLE_ALERTS = True
 
