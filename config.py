@@ -15,3 +15,5 @@ WTI_SYMBOL = "WTI"
 BRENT_SYMBOL = "BRENT"
 
 ENABLE_ALERTS = True
+
+MT5_TERMINAL_PATH = r"C:\Program Files\FxPro - MetaTrader 5\terminal64.exe"
