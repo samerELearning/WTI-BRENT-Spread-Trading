@@ -3,44 +3,43 @@ Fetches live WTI and Brent prices from Yahoo Finance.
 """
 
 import yfinance as yf
-from config import PRICE_INTERVAL, PRICE_PERIOD
+
+from config import (
+    PRICE_INTERVAL,
+    PRICE_PERIOD,
+    FALLBACK_PRICE_INTERVAL,
+    FALLBACK_PRICE_PERIOD,
+    LAST_RESORT_PRICE_INTERVAL,
+    LAST_RESORT_PRICE_PERIOD,
+)
+
+
+def fetch_price_history(symbol: str, period: str, interval: str):
+    ticker = yf.Ticker(symbol)
+    return ticker.history(period=period, interval=interval)
 
 
 def get_latest_price(symbol: str) -> float:
     """
-    Retrieve the most recent closing price for a given market symbol.
-
-    Args:
-        symbol (str): Yahoo Finance symbol.
-
-    Returns:
-        float: Latest available price.
-
-    Raises:
-        ValueError: If no market data is returned.
+    Retrieve the latest available price for a symbol using fallback intervals.
     """
-    ticker = yf.Ticker(symbol)
-    history = ticker.history(period=PRICE_PERIOD, interval=PRICE_INTERVAL)
+    attempts = [
+        (PRICE_PERIOD, PRICE_INTERVAL),
+        (FALLBACK_PRICE_PERIOD, FALLBACK_PRICE_INTERVAL),
+        (LAST_RESORT_PRICE_PERIOD, LAST_RESORT_PRICE_INTERVAL),
+    ]
 
-    if history.empty:
-        raise ValueError(f"No data returned for symbol: {symbol}")
+    for period, interval in attempts:
+        history = fetch_price_history(symbol, period, interval)
 
-    latest_close = history.iloc[-1]["Close"]
-    return float(latest_close)
+        if not history.empty:
+            latest_close = history.iloc[-1]["Close"]
+            return float(latest_close)
+
+    raise ValueError(f"No data returned for symbol after all fallbacks: {symbol}")
 
 
 def get_wti_brent_prices(wti_symbol: str, brent_symbol: str) -> tuple[float, float]:
-    """
-    Fetch latest WTI and Brent prices.
-
-    Args:
-        wti_symbol (str): Yahoo Finance WTI symbol.
-        brent_symbol (str): Yahoo Finance Brent symbol.
-
-    Returns:
-        tuple[float, float]: (WTI price, Brent price)
-    """
     wti_price = get_latest_price(wti_symbol)
     brent_price = get_latest_price(brent_symbol)
-
     return wti_price, brent_price
