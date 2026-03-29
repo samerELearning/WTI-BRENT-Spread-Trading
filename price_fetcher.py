@@ -1,5 +1,6 @@
 """
-Fetches live MT5 quotes, symbol trading metadata, and simple order execution helpers.
+Fetches live MT5 quotes, symbol trading metadata, open-position inspection,
+and order execution helpers.
 """
 
 from __future__ import annotations
@@ -30,6 +31,18 @@ class SymbolTradingSpecs:
     trade_contract_size: float
     trade_mode: int
     visible: bool
+
+
+@dataclass
+class PositionInfo:
+    symbol: str
+    ticket: int
+    position_type: int
+    volume: float
+    price_open: float
+    price_current: float
+    profit: float
+    time: datetime
 
 
 def initialize_mt5(login: int, password: str, server: str) -> None:
@@ -114,6 +127,96 @@ def _get_supported_filling_modes() -> list[int]:
         mt5.ORDER_FILLING_FOK,
         mt5.ORDER_FILLING_RETURN,
     ]
+
+
+def get_open_position(symbol: str) -> PositionInfo | None:
+    """
+    Return the first open position for a symbol, or None if no open position exists.
+    """
+    positions = mt5.positions_get(symbol=symbol)
+
+    if positions is None:
+        error = mt5.last_error()
+        raise RuntimeError(f"positions_get() failed for {symbol}: {error}")
+
+    if len(positions) == 0:
+        return None
+
+    pos = positions[0]
+
+    return PositionInfo(
+        symbol=pos.symbol,
+        ticket=int(pos.ticket),
+        position_type=int(pos.type),
+        volume=float(pos.volume),
+        price_open=float(pos.price_open),
+        price_current=float(pos.price_current),
+        profit=float(pos.profit),
+        time=datetime.fromtimestamp(pos.time),
+    )
+
+
+def get_position_type_name(position_type: int) -> str:
+    if position_type == mt5.POSITION_TYPE_BUY:
+        return "BUY"
+    if position_type == mt5.POSITION_TYPE_SELL:
+        return "SELL"
+    return f"UNKNOWN({position_type})"
+
+
+def detect_open_spread_state(wti_symbol: str, brent_symbol: str) -> dict:
+    """
+    Detect whether WTI/BRENT currently form:
+    - no_position
+    - short_spread (WTI buy + BRENT sell)
+    - long_spread (WTI sell + BRENT buy)
+    - incomplete_or_abnormal
+    """
+    wti_position = get_open_position(wti_symbol)
+    brent_position = get_open_position(brent_symbol)
+
+    has_wti = wti_position is not None
+    has_brent = brent_position is not None
+
+    if not has_wti and not has_brent:
+        return {
+            "state": "no_position",
+            "wti_position": None,
+            "brent_position": None,
+        }
+
+    if not (has_wti and has_brent):
+        return {
+            "state": "incomplete_or_abnormal",
+            "wti_position": wti_position,
+            "brent_position": brent_position,
+        }
+
+    if (
+        wti_position.position_type == mt5.POSITION_TYPE_BUY
+        and brent_position.position_type == mt5.POSITION_TYPE_SELL
+    ):
+        return {
+            "state": "short_spread",
+            "wti_position": wti_position,
+            "brent_position": brent_position,
+        }
+
+    if (
+        wti_position.position_type == mt5.POSITION_TYPE_SELL
+        and brent_position.position_type == mt5.POSITION_TYPE_BUY
+    ):
+        return {
+            "state": "long_spread",
+            "wti_position": wti_position,
+            "brent_position": brent_position,
+        }
+
+    return {
+        "state": "incomplete_or_abnormal",
+        "wti_position": wti_position,
+        "brent_position": brent_position,
+    }
 
 
 def place_market_buy_order(
