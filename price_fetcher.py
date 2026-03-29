@@ -3,9 +3,22 @@ Fetches live WTI and Brent prices from MetaTrader 5.
 """
 
 from __future__ import annotations
-from config import MT5_TERMINAL_PATH
+
+from dataclasses import dataclass
+from datetime import datetime
 
 import MetaTrader5 as mt5
+
+from config import MT5_TERMINAL_PATH
+
+
+@dataclass
+class SymbolQuote:
+    symbol: str
+    bid: float
+    ask: float
+    mid: float
+    tick_time: datetime
 
 
 def initialize_mt5(login: int, password: str, server: str) -> None:
@@ -44,18 +57,42 @@ def get_symbol_tick(symbol: str):
     return tick
 
 
-def get_latest_price(symbol: str) -> float:
+def get_symbol_quote(symbol: str) -> SymbolQuote:
     """
-    Retrieve the latest marketable display price for a symbol using the mid price.
-    Mid price = (bid + ask) / 2
+    Return a structured live quote for a symbol.
     """
     tick = get_symbol_tick(symbol)
 
     if tick.bid <= 0 or tick.ask <= 0:
         raise ValueError(f"Invalid bid/ask for symbol: {symbol}")
 
+    tick_time = datetime.fromtimestamp(tick.time)
     mid_price = (tick.bid + tick.ask) / 2
-    return float(mid_price)
+
+    return SymbolQuote(
+        symbol=symbol,
+        bid=float(tick.bid),
+        ask=float(tick.ask),
+        mid=float(mid_price),
+        tick_time=tick_time,
+    )
+
+
+def get_wti_brent_quotes(wti_symbol: str, brent_symbol: str) -> tuple[SymbolQuote, SymbolQuote]:
+    """
+    Return structured quotes for WTI and Brent.
+    """
+    wti_quote = get_symbol_quote(wti_symbol)
+    brent_quote = get_symbol_quote(brent_symbol)
+    return wti_quote, brent_quote
+
+
+def get_latest_price(symbol: str) -> float:
+    """
+    Retrieve the latest marketable display price for a symbol using the mid price.
+    """
+    quote = get_symbol_quote(symbol)
+    return quote.mid
 
 
 def get_wti_brent_prices(wti_symbol: str, brent_symbol: str) -> tuple[float, float]:
@@ -74,7 +111,7 @@ def get_executable_short_spread(wti_symbol: str, brent_symbol: str) -> float:
 
     Spread = Brent bid - WTI ask
     """
-    wti_tick = get_symbol_tick(wti_symbol)
-    brent_tick = get_symbol_tick(brent_symbol)
+    wti_quote = get_symbol_quote(wti_symbol)
+    brent_quote = get_symbol_quote(brent_symbol)
 
-    return float(brent_tick.bid - wti_tick.ask)
+    return float(brent_quote.bid - wti_quote.ask)
