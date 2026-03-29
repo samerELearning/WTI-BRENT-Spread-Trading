@@ -14,4 +14,7 @@ CHECK_INTERVAL_SECONDS = 60 #check every 60 seconds
 WTI_SYMBOL = "CL=F"         #Yahoo Finance code for WTI futures
 BRENT_SYMBOL = "BZ=F"       #Yahoo Finance code for Brent futures
 
+PRICE_INTERVAL = "1m"       # Candle granularity
+PRICE_PERIOD = "1d"         # Historical window requested
+
 ENABLE_ALERTS = True        #allow the app to trigger alerts

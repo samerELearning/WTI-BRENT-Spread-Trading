@@ -3,6 +3,7 @@ Fetches live WTI and Brent prices from Yahoo Finance.
 """
 
 import yfinance as yf
+from config import PRICE_INTERVAL, PRICE_PERIOD
 
 
 def get_latest_price(symbol: str) -> float:
@@ -19,7 +20,7 @@ def get_latest_price(symbol: str) -> float:
         ValueError: If no market data is returned.
     """
     ticker = yf.Ticker(symbol)
-    history = ticker.history(period="1d", interval="1m")
+    history = ticker.history(period=PRICE_PERIOD, interval=PRICE_INTERVAL)
 
     if history.empty:
         raise ValueError(f"No data returned for symbol: {symbol}")
