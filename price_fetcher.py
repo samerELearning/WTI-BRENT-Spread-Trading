@@ -3,15 +3,18 @@ Fetches live WTI and Brent prices from MetaTrader 5.
 """
 
 from __future__ import annotations
+from config import MT5_TERMINAL_PATH
 
 import MetaTrader5 as mt5
 
 
 def initialize_mt5(login: int, password: str, server: str) -> None:
     """
-    Initialize the MT5 terminal connection directly with account credentials.
+    Initialize the MT5 terminal connection directly with account credentials
+    and an explicit terminal path.
     """
     connected = mt5.initialize(
+        path=MT5_TERMINAL_PATH,
         login=login,
         password=password,
         server=server,
