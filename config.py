@@ -3,6 +3,7 @@ Configuration values for the WTI-BRENT MT5 spread monitor.
 """
 
 ENTRY_SPREAD = 9.0
+EXIT_SPREAD = 7.0
 CHECK_INTERVAL_SECONDS = 1
 
 WTI_SYMBOL = "WTI"
