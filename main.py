@@ -12,10 +12,12 @@ from config import (
     CHECK_INTERVAL_SECONDS,
     ENABLE_ALERTS,
     ENTRY_SPREAD,
+    EXIT_SPREAD,
     PAIR_LOT_SIZE,
     WTI_SYMBOL,
 )
 from price_fetcher import (
+    close_short_spread_pair,
     detect_open_spread_state,
     get_executable_short_spread,
     get_position_type_name,
@@ -71,6 +73,7 @@ def main() -> None:
     print(f"BRENT symbol: {BRENT_SYMBOL}")
     print(f"Pair lot size: {PAIR_LOT_SIZE}")
     print(f"Entry spread alert level: {ENTRY_SPREAD}")
+    print(f"Exit spread level: {EXIT_SPREAD}")
     print(f"Check interval: {CHECK_INTERVAL_SECONDS} second(s)")
     print("-" * 100)
 
@@ -109,6 +112,8 @@ def main() -> None:
 
             entry_signal = is_entry_signal(executable_spread, ENTRY_SPREAD)
             no_open_pair = spread_state["state"] == "no_position"
+            short_spread_open = spread_state["state"] == "short_spread"
+            exit_signal = executable_spread <= EXIT_SPREAD
 
             if ENABLE_ALERTS and entry_signal:
                 send_console_alert(
@@ -139,6 +144,33 @@ def main() -> None:
                     print_order_result("ROLLBACK WTI CLOSE RESULT", pair_result["rollback_result"])
 
                 auto_open_triggered = True
+
+            if short_spread_open and exit_signal:
+                print("AUTO EXIT TRIGGERED: closing WTI-BRENT short spread pair...")
+                print("-" * 100)
+
+                wti_position = spread_state["wti_position"]
+                brent_position = spread_state["brent_position"]
+
+                print("OPEN POSITIONS BEFORE CLOSE")
+                print_position_info("WTI", wti_position)
+                print_position_info("BRENT", brent_position)
+                print("-" * 100)
+
+                close_result = close_short_spread_pair(
+                    wti_symbol=WTI_SYMBOL,
+                    brent_symbol=BRENT_SYMBOL,
+                    wti_position_ticket=wti_position.ticket,
+                    brent_position_ticket=brent_position.ticket,
+                    volume=min(wti_position.volume, brent_position.volume),
+                )
+
+                print_order_result("WTI CLOSE RESULT", close_result["wti_close_result"])
+                print_order_result("BRENT CLOSE RESULT", close_result["brent_close_result"])
+                print(f"PAIR CLOSE SUCCESS: {close_result['success']}")
+                print("-" * 100)
+
+                auto_open_triggered = False
 
             previous_wti_tick_time = wti_quote.tick_time
             previous_brent_tick_time = brent_quote.tick_time
